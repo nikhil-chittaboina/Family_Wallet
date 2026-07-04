@@ -3,6 +3,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import expenseRoutes from './src/routes/expenses.js';
+import incomeRoutes from './src/routes/incomes.js';
+import loanRoutes from './src/routes/loans.js';
 
 dotenv.config();
 
@@ -17,6 +19,8 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/expenses', expenseRoutes);
+app.use('/api/incomes', incomeRoutes);
+app.use('/api/loans', loanRoutes);
 
 mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/family-expense-tracker')
   .then(() => console.log('MongoDB connected'))

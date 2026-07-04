@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  font-family: Inter, system-ui, sans-serif;
+  background: radial-gradient(circle at top, rgba(139,92,246,0.25), transparent 30%),
+              radial-gradient(circle at bottom right, rgba(59,130,246,0.2), transparent 28%),
+              linear-gradient(180deg, #060b17 0%, #0f172a 100%);
+}
+
+body {
+  @apply min-h-screen bg-slate-950 text-slate-100 antialiased;
+}
+
+* {
+  @apply box-border;
+}
+
+.main-shell {
+  background: rgba(15,23,42,0.76);
+  box-shadow: 0 40px 120px rgba(15,23,42,0.56);
+}
+
+.glass-card {
+  background: rgba(15,23,42,0.82);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 30px 65px rgba(15,23,42,0.32);
+  backdrop-filter: blur(24px);
+}
+
+.soft-card {
+  background: rgba(30,41,59,0.9);
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 22px 60px rgba(15,23,42,0.28);
+  backdrop-filter: blur(18px);
+}
+
+.button-primary {
+  @apply inline-flex items-center justify-center rounded-3xl bg-violet-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition hover:bg-violet-400;
+}
+
+.status-pill {
+  @apply inline-flex items-center rounded-full bg-slate-800 px-3 py-1 text-xs font-medium text-slate-300;
+}
