@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+import expenseRoutes from './src/routes/expenses.js';
 
 dotenv.config();
 
@@ -14,6 +15,8 @@ app.use(express.json());
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', message: 'Family expense tracker API is running' });
 });
+
+app.use('/api/expenses', expenseRoutes);
 
 mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/family-expense-tracker')
   .then(() => console.log('MongoDB connected'))
