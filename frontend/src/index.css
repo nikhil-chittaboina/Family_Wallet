@@ -1,46 +1,305 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
-  font-family: Inter, system-ui, sans-serif;
-  background: radial-gradient(circle at top, rgba(139,92,246,0.25), transparent 30%),
-              radial-gradient(circle at bottom right, rgba(59,130,246,0.2), transparent 28%),
-              linear-gradient(180deg, #060b17 0%, #0f172a 100%);
+  color-scheme: light;
+  --purple-950: #2e1064;
+  --purple-900: #3b0764;
+  --purple-800: #5b21b6;
+  --purple-700: #6d28d9;
+  --purple-600: #7c3aed;
+  --purple-500: #8b5cf6;
+  --purple-400: #a78bfa;
+  --purple-300: #c4b5fd;
+  --purple-200: #ddd6fe;
+  --purple-100: #ede9fe;
+  --purple-50: #f5f3ff;
+  --pink-500: #ec4899;
+  --pink-100: #fce7f3;
+  --peach-100: #ffedd5;
+  --blue-100: #dbeafe;
+  --green-600: #059669;
+  --green-100: #d1fae5;
+  --rose-600: #e11d48;
+  --text-primary: #1e1b4b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --border-soft: rgba(139, 92, 246, 0.12);
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
 }
 
 body {
-  @apply min-h-screen bg-slate-950 text-slate-100 antialiased;
+  min-height: 100vh;
+  background: linear-gradient(160deg, #ede9fe 0%, #f5f3ff 40%, #faf5ff 100%);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
 }
 
-* {
-  @apply box-border;
-}
+* { box-sizing: border-box; }
 
-.main-shell {
-  background: rgba(15,23,42,0.76);
-  box-shadow: 0 40px 120px rgba(15,23,42,0.56);
+/* ── Layout panels ── */
+.page-shell {
+  min-height: 100vh;
 }
 
 .glass-card {
-  background: rgba(15,23,42,0.82);
-  border: 1px solid rgba(255,255,255,0.08);
-  box-shadow: 0 30px 65px rgba(15,23,42,0.32);
-  backdrop-filter: blur(24px);
+  background: #ffffff;
+  border: 1px solid var(--border-soft);
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 24px rgba(91, 33, 182, 0.06);
+}
+
+.floating-panel {
+  background: #ffffff;
+  border: 1px solid var(--border-soft);
+  border-radius: 1.5rem;
+  box-shadow: 0 8px 32px rgba(91, 33, 182, 0.07);
 }
 
 .soft-card {
-  background: rgba(30,41,59,0.9);
-  border: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 0 22px 60px rgba(15,23,42,0.28);
-  backdrop-filter: blur(18px);
+  background: var(--purple-50);
+  border: 1px solid rgba(139, 92, 246, 0.1);
+  border-radius: 1rem;
 }
 
+.list-row {
+  background: var(--purple-50);
+  border: 1px solid rgba(139, 92, 246, 0.08);
+  border-radius: 1rem;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.list-row:hover {
+  background: #ffffff;
+  box-shadow: 0 4px 16px rgba(91, 33, 182, 0.08);
+}
+
+/* ── Stat cards (tinted like mockup) ── */
+.stat-card {
+  border-radius: 1.25rem;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid transparent;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(91, 33, 182, 0.12);
+}
+
+.stat-card-income {
+  background: linear-gradient(135deg, #ede9fe 0%, #f5f3ff 100%);
+  border-color: rgba(124, 58, 237, 0.15);
+}
+
+.stat-card-expense {
+  background: linear-gradient(135deg, #fce7f3 0%, #fdf2f8 100%);
+  border-color: rgba(236, 72, 153, 0.15);
+}
+
+.stat-card-balance {
+  background: linear-gradient(135deg, #ffedd5 0%, #fff7ed 100%);
+  border-color: rgba(249, 115, 22, 0.15);
+}
+
+.stat-card-savings {
+  background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+  border-color: rgba(59, 130, 246, 0.15);
+}
+
+.stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.875rem;
+  background: rgba(255, 255, 255, 0.85);
+  font-size: 1.25rem;
+  box-shadow: 0 2px 8px rgba(91, 33, 182, 0.08);
+}
+
+.stat-label {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #ffffff;
+}
+
+/* ── Buttons ── */
 .button-primary {
-  @apply inline-flex items-center justify-center rounded-3xl bg-violet-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition hover:bg-violet-400;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: #ffffff;
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
+.button-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.4);
+}
+
+.button-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--purple-800);
+  background: #ffffff;
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 2px 8px rgba(91, 33, 182, 0.06);
+  transition: background 0.15s ease;
+}
+
+.button-secondary:hover {
+  background: var(--purple-50);
+}
+
+/* ── Inputs ── */
+.input-soft {
+  width: 100%;
+  border-radius: 0.875rem;
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  background: #ffffff;
+  padding: 0.7rem 1rem;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input-soft:focus {
+  border-color: var(--purple-500);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+}
+
+.input-soft::placeholder {
+  color: var(--text-muted);
+}
+
+/* ── Pills & badges ── */
 .status-pill {
-  @apply inline-flex items-center rounded-full bg-slate-800 px-3 py-1 text-xs font-medium text-slate-300;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--purple-100);
+  padding: 0.35rem 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--purple-800);
+}
+
+/* ── Sidebar ── */
+.sidebar-panel {
+  background: linear-gradient(180deg, #ddd6fe 0%, #e9d5ff 55%, #f3e8ff 100%);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  box-shadow: 4px 0 32px rgba(91, 33, 182, 0.08);
+}
+
+.sidebar-nav-active {
+  background: #ffffff !important;
+  color: var(--purple-900) !important;
+  box-shadow: 0 4px 16px rgba(91, 33, 182, 0.1);
+}
+
+.sidebar-nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 1rem;
+}
+
+.sidebar-nav-icon-active {
+  background: linear-gradient(135deg, #7c3aed, #a78bfa);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+/* ── Typography ── */
+.section-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--purple-600);
+}
+
+.section-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--purple-900);
+}
+
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--purple-950);
+  line-height: 1.2;
+}
+
+.page-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* ── Hero banner ── */
+.hero-banner {
+  background: linear-gradient(135deg, #ede9fe 0%, #f5f3ff 60%, #ffffff 100%);
+  border: 1px solid rgba(139, 92, 246, 0.12);
+  border-radius: 1.5rem;
+  box-shadow: 0 8px 32px rgba(91, 33, 182, 0.08);
+}
+
+/* ── Top bar ── */
+.top-bar {
+  background: #ffffff;
+  border: 1px solid var(--border-soft);
+  border-radius: 1.25rem;
+  box-shadow: 0 4px 20px rgba(91, 33, 182, 0.06);
+}
+
+/* ── Summary mini cards ── */
+.summary-mini {
+  background: var(--purple-50);
+  border: 1px solid rgba(139, 92, 246, 0.1);
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+}
+
+.amount-income { color: var(--green-600); font-weight: 700; }
+.amount-expense { color: var(--rose-600); font-weight: 700; }
+.amount-loan { color: #2563eb; font-weight: 700; }
+
+/* ── Empty state ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.875rem;
 }

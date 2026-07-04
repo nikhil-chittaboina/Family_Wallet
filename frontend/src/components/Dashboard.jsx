@@ -1,24 +1,38 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BarChart, Bar, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import {
+  BarChart, Bar, ResponsiveContainer, PieChart, Pie, Cell,
+  XAxis, YAxis, Tooltip, Legend, CartesianGrid,
+} from 'recharts';
+import api from '../lib/api';
+import { formatCurrency } from '../lib/format';
+import { config } from '../config/env';
 
-const categoryColors = ['#a78bfa', '#f59e0b', '#34d399', '#38bdf8', '#f472b6'];
+const categoryColors = ['#8b5cf6', '#ec4899', '#f97316', '#3b82f6', '#10b981'];
 const categoryMap = ['Food', 'Home', 'Transport', 'Health', 'Others'];
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value);
-}
+const tooltipStyle = {
+  background: '#ffffff',
+  border: '1px solid #ddd6fe',
+  borderRadius: '12px',
+  fontSize: '13px',
+  boxShadow: '0 4px 16px rgba(91,33,182,0.1)',
+};
 
 function Dashboard() {
   const [expenseData, setExpenseData] = useState([]);
   const [loanData, setLoanData] = useState([]);
   const [incomeData, setIncomeData] = useState([]);
+  const [selectedPeriod, setSelectedPeriod] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${now.getMonth()}`;
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
-      fetch('http://localhost:5000/api/expenses').then((res) => res.json()),
-      fetch('http://localhost:5000/api/loans').then((res) => res.json()).catch(() => []),
-      fetch('http://localhost:5000/api/incomes').then((res) => res.json()).catch(() => []),
+      api.get('/expenses').then((res) => res.data),
+      api.get('/loans').then((res) => res.data).catch(() => []),
+      api.get('/incomes').then((res) => res.data).catch(() => []),
     ])
       .then(([expenses, loans, incomes]) => {
         setExpenseData(expenses || []);
@@ -28,12 +42,63 @@ function Dashboard() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  const currentMonthExpenses = useMemo(() => expenseData.filter((expense) => new Date(expense.date).getMonth() === new Date().getMonth()), [expenseData]);
-  const currentMonthIncome = useMemo(() => incomeData.filter((income) => new Date(income.date).getMonth() === new Date().getMonth()), [incomeData]);
-  const monthlyLoanObligations = useMemo(() => loanData.reduce((sum, loan) => sum + (loan.monthlyInstallment || 0), 0), [loanData]);
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const periodOptions = useMemo(() => {
+    const now = new Date();
+    const options = [{ label: 'All Time', value: 'all' }];
+    for (let offset = 0; offset < 12; offset += 1) {
+      const date = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+      options.push({
+        label: `${monthNames[date.getMonth()]} ${date.getFullYear()}`,
+        value: `${date.getFullYear()}-${date.getMonth()}`,
+      });
+    }
+    return options;
+  }, []);
 
-  const totalIncome = useMemo(() => currentMonthIncome.reduce((sum, item) => sum + (item.amount || 0), 0), [currentMonthIncome]);
-  const totalExpenses = useMemo(() => currentMonthExpenses.reduce((sum, item) => sum + (item.amount || 0), 0), [currentMonthExpenses]);
+  const selectedPeriodLabel = useMemo(() => {
+    if (selectedPeriod === 'all') return 'All Time';
+    const [year, month] = selectedPeriod.split('-').map(Number);
+    return `${monthNames[month]} ${year}`;
+  }, [selectedPeriod]);
+
+  const selectedMonth = useMemo(() => {
+    if (selectedPeriod === 'all') return null;
+    const [year, month] = selectedPeriod.split('-').map(Number);
+    return { year, month };
+  }, [selectedPeriod]);
+
+  const filteredExpenses = useMemo(
+    () => expenseData.filter((expense) => {
+      if (!selectedMonth) return true;
+      const date = new Date(expense.date);
+      return date.getFullYear() === selectedMonth.year && date.getMonth() === selectedMonth.month;
+    }),
+    [expenseData, selectedMonth]
+  );
+
+  const filteredIncome = useMemo(
+    () => incomeData.filter((income) => {
+      if (!selectedMonth) return true;
+      const date = new Date(income.date);
+      return date.getFullYear() === selectedMonth.year && date.getMonth() === selectedMonth.month;
+    }),
+    [incomeData, selectedMonth]
+  );
+
+  const monthlyLoanObligations = useMemo(
+    () => loanData.reduce((sum, loan) => sum + (loan.monthlyInstallment || 0), 0),
+    [loanData]
+  );
+
+  const totalIncome = useMemo(
+    () => filteredIncome.reduce((sum, item) => sum + (item.amount || 0), 0),
+    [filteredIncome]
+  );
+  const totalExpenses = useMemo(
+    () => filteredExpenses.reduce((sum, item) => sum + (item.amount || 0), 0),
+    [filteredExpenses]
+  );
   const balance = totalIncome - totalExpenses;
   const availableAfterLoans = balance - monthlyLoanObligations;
   const healthIndicator = useMemo(() => {
@@ -42,7 +107,7 @@ function Dashboard() {
   }, [availableAfterLoans, totalIncome]);
 
   const recentTransactions = useMemo(() => {
-    const expenses = currentMonthExpenses.map((item) => ({
+    const expenses = filteredExpenses.map((item) => ({
       id: item._id,
       title: item.title,
       category: item.category,
@@ -50,196 +115,280 @@ function Dashboard() {
       date: item.date,
       type: 'expense',
     }));
-    const incomes = currentMonthIncome.map((item) => ({
+    const incomes = filteredIncome.map((item) => ({
       id: item._id,
       title: item.source || 'Income',
-      category: item.earner || 'Family',
+      category: item.earner || 'Income',
       amount: item.amount,
       date: item.date,
       type: 'income',
     }));
-    return [...incomes, ...expenses].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
-  }, [currentMonthExpenses, currentMonthIncome]);
+    return [...incomes, ...expenses].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 6);
+  }, [filteredExpenses, filteredIncome]);
 
   const expenseByCategory = useMemo(() => {
     const grouped = categoryMap.map((name) => ({ name, value: 0 }));
-    currentMonthExpenses.forEach((item) => {
+    filteredExpenses.forEach((item) => {
       const index = categoryMap.findIndex((category) => category.toLowerCase() === item.category?.toLowerCase());
       if (index >= 0) grouped[index].value += item.amount;
       else grouped[4].value += item.amount;
     });
     return grouped.filter((entry) => entry.value > 0);
-  }, [currentMonthExpenses]);
+  }, [filteredExpenses]);
 
-  const upcomingLoans = useMemo(() => loanData
-    .filter((loan) => new Date(loan.dueDate) >= new Date())
-    .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
-    .slice(0, 3), [loanData]);
+  const chartData = useMemo(() => {
+    if (selectedMonth) {
+      const weeks = Array.from({ length: 5 }, (_, index) => ({ name: `W${index + 1}`, Income: 0, Expenses: 0 }));
+      const addWeeklyValues = (item, type) => {
+        const date = new Date(item.date);
+        if (date.getFullYear() !== selectedMonth.year || date.getMonth() !== selectedMonth.month) return;
+        const weekIndex = Math.min(4, Math.floor((date.getDate() - 1) / 7));
+        weeks[weekIndex][type] += item.amount || 0;
+      };
+      filteredIncome.forEach((item) => addWeeklyValues(item, 'Income'));
+      filteredExpenses.forEach((item) => addWeeklyValues(item, 'Expenses'));
+      return weeks;
+    }
+
+    const monthly = {};
+    const addMonthlyValues = (item, type) => {
+      const date = new Date(item.date);
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      if (!monthly[key]) {
+        monthly[key] = {
+          name: monthNames[date.getMonth()],
+          year: date.getFullYear(),
+          month: date.getMonth(),
+          Income: 0,
+          Expenses: 0,
+        };
+      }
+      monthly[key][type] += item.amount || 0;
+    };
+    filteredIncome.forEach((item) => addMonthlyValues(item, 'Income'));
+    filteredExpenses.forEach((item) => addMonthlyValues(item, 'Expenses'));
+
+    return Object.values(monthly)
+      .sort((a, b) => (a.year === b.year ? a.month - b.month : a.year - b.year))
+      .slice(-12);
+  }, [selectedMonth, filteredIncome, filteredExpenses, monthNames]);
+
+  const upcomingLoans = useMemo(
+    () => loanData
+      .filter((loan) => new Date(loan.dueDate) >= new Date())
+      .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+      .slice(0, 3),
+    [loanData]
+  );
+
+  const summaryCards = [
+    { label: 'Income', value: formatCurrency(totalIncome), icon: '💸', cls: 'stat-card-income', badgeBg: 'bg-brand-600' },
+    { label: 'Expenses', value: formatCurrency(totalExpenses), icon: '🛒', cls: 'stat-card-expense', badgeBg: 'bg-pink-500' },
+    { label: 'Balance', value: formatCurrency(balance), icon: '💎', cls: 'stat-card-balance', badgeBg: 'bg-orange-500' },
+    { label: 'Savings', value: formatCurrency(Math.max(0, availableAfterLoans)), icon: '💰', cls: 'stat-card-savings', badgeBg: 'bg-blue-500' },
+  ];
 
   return (
-    <div className="space-y-8">
-      <section className="glass-card rounded-[2rem] border border-white/10 p-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+    <div className="space-y-5 pb-20 lg:pb-0">
+      {/* Hero */}
+      <section className="hero-banner p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-violet-300/80">Dashboard</p>
-            <h1 className="mt-4 text-4xl font-semibold text-white">Good Morning, Mia! <span className="text-amber-300">🌞</span></h1>
-            <p className="mt-3 max-w-2xl text-slate-300">Let’s manage your finances smartly today. Track income, expenses, loans, and savings from one beautiful place.</p>
+            <h2 className="page-title">
+              Good Morning, {config.userName}! <span aria-hidden="true">☀️</span>
+            </h2>
+            <p className="page-subtitle mt-1">Let&apos;s manage your finances smartly today.</p>
+            <div className="mt-4 inline-flex items-center gap-3 rounded-xl bg-white/80 px-3 py-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-brand-500">Period</span>
+              <select
+                value={selectedPeriod}
+                onChange={(e) => setSelectedPeriod(e.target.value)}
+                className="input-soft !w-auto !border-0 !bg-transparent !p-0 !shadow-none !ring-0 text-sm font-semibold text-brand-800"
+              >
+                {periodOptions.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          <button className="button-primary">+ Add Transaction</button>
+          <button type="button" className="button-primary shrink-0">+ Add Transaction</button>
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-4">
-        {[{
-          label: 'Total Income', value: formatCurrency(totalIncome), delta: '+12.5% this month', accent: 'from-violet-500 to-indigo-500'
-        }, {
-          label: 'Total Expenses', value: formatCurrency(totalExpenses), delta: '-8.4% this month', accent: 'from-pink-500 to-red-500'
-        }, {
-          label: 'Balance', value: formatCurrency(balance), delta: '+18.2% this month', accent: 'from-emerald-500 to-teal-500'
-        }, {
-          label: 'Savings', value: formatCurrency(Math.max(0, availableAfterLoans)), delta: '+16.6% this month', accent: 'from-sky-500 to-cyan-500'
-        }].map((card) => (
-          <div key={card.label} className="glass-card rounded-[2rem] p-6">
-            <div className={`mb-4 inline-flex rounded-3xl bg-gradient-to-r ${card.accent} bg-clip-text p-1 text-transparent text-sm font-semibold`}>{card.label}</div>
-            <p className="text-3xl font-semibold text-white">{card.value}</p>
-            <p className="mt-3 text-sm text-slate-400">{card.delta}</p>
+      {/* Summary cards */}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {summaryCards.map((card) => (
+          <div key={card.label} className={`stat-card ${card.cls}`}>
+            <div className="flex items-center justify-between">
+              <span className="stat-icon">{card.icon}</span>
+              <span className={`stat-label ${card.badgeBg}`}>{card.label}</span>
+            </div>
+            <p className="mt-4 text-2xl font-extrabold text-brand-950">{card.value}</p>
+            <p className="mt-1 text-xs font-medium text-brand-600/70">{selectedPeriodLabel}</p>
           </div>
         ))}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.4fr_0.95fr]">
-        <div className="glass-card rounded-[2rem] p-6">
+      {/* Charts */}
+      <section className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
+        <div className="floating-panel p-5">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-white">Income vs Expenses</h2>
-              <p className="mt-2 text-sm text-slate-400">Monthly trend comparison provides a quick view of cash flow.</p>
+              <h3 className="section-title">Income vs Expenses</h3>
+              <p className="mt-0.5 text-xs text-brand-600/60">{selectedPeriodLabel}</p>
             </div>
-            <div className="status-pill">This Month</div>
+            <span className="status-pill">{selectedPeriodLabel}</span>
           </div>
-          <div className="mt-6 h-[300px]">
+          <div className="mt-4 h-[260px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={[
-                { name: 'Week 1', Income: 12000, Expenses: 8900 },
-                { name: 'Week 2', Income: 14500, Expenses: 10200 },
-                { name: 'Week 3', Income: 13200, Expenses: 11200 },
-                { name: 'Week 4', Income: 15800, Expenses: 11800 },
-              ]}>
-                <Bar dataKey="Income" fill="#8b5cf6" radius={[12, 12, 0, 0]} />
-                <Bar dataKey="Expenses" fill="#ec4899" radius={[12, 12, 0, 0]} />
+              <BarChart data={chartData} barGap={4} barCategoryGap="20%">
+                <CartesianGrid strokeDasharray="3 3" stroke="#ede9fe" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(v) => formatCurrency(v)} />
+                <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
+                <Bar dataKey="Income" fill="#8b5cf6" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                <Bar dataKey="Expenses" fill="#ec4899" radius={[6, 6, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="glass-card rounded-[2rem] p-6">
-          <div>
-            <h2 className="text-xl font-semibold text-white">Expenses by Category</h2>
-            <p className="mt-2 text-sm text-slate-400">See which categories are using the most budget.</p>
+        <div className="floating-panel p-5">
+          <h3 className="section-title">Expenses by Category</h3>
+          <p className="mt-0.5 text-xs text-brand-600/60">{selectedPeriodLabel}</p>
+          <div className="mt-2 h-[200px]">
+            {expenseByCategory.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={expenseByCategory}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={3}
+                  >
+                    {expenseByCategory.map((entry, index) => (
+                      <Cell key={entry.name} fill={categoryColors[index % categoryColors.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v) => formatCurrency(v)} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="empty-state h-full">No expense data yet</div>
+            )}
           </div>
-          <div className="mt-8 flex h-[300px] items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={expenseByCategory} dataKey="value" nameKey="name" innerRadius={62} outerRadius={98} paddingAngle={4}>
-                  {expenseByCategory.map((entry, index) => (
-                    <Cell key={entry.name} fill={categoryColors[index % categoryColors.length]} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {expenseByCategory.slice(0, 4).map((entry, index) => (
-              <div key={entry.name} className="soft-card rounded-3xl p-4">
-                <p className="text-sm text-slate-400">{entry.name}</p>
-                <p className="mt-2 text-lg font-semibold text-white">{formatCurrency(entry.value)}</p>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {expenseByCategory.map((entry, index) => (
+              <div key={entry.name} className="flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-2">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: categoryColors[index % categoryColors.length] }} />
+                <span className="flex-1 text-xs font-medium text-brand-800">{entry.name}</span>
+                <span className="text-xs font-bold text-brand-950">{formatCurrency(entry.value)}</span>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="glass-card rounded-[2rem] p-6">
+      {/* Transactions & Loans */}
+      <section className="grid gap-4 xl:grid-cols-2">
+        <div className="floating-panel p-5">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-white">Recent Transactions</h2>
-              <p className="mt-2 text-sm text-slate-400">A quick snapshot of the latest incomes and expenses.</p>
-            </div>
-            <div className="status-pill">{recentTransactions.length} items</div>
+            <h3 className="section-title">Recent Transactions</h3>
+            <span className="status-pill">{recentTransactions.length} items</span>
           </div>
-          <div className="mt-6 space-y-3">
+          <div className="mt-4 space-y-2">
             {isLoading ? (
-              <p className="text-slate-400">Loading transactions…</p>
+              <p className="text-sm text-brand-600/60">Loading…</p>
             ) : recentTransactions.length === 0 ? (
-              <p className="text-slate-400">No recent transactions this month.</p>
+              <div className="empty-state">No transactions for {selectedPeriodLabel}</div>
             ) : (
               recentTransactions.map((item) => (
-                <div key={item.id} className="soft-card flex items-center justify-between gap-4 rounded-3xl p-4">
-                  <div>
-                    <p className="font-semibold text-white">{item.title}</p>
-                    <p className="mt-1 text-sm text-slate-400">{item.category} • {new Date(item.date).toLocaleDateString()}</p>
+                <div key={item.id} className="list-row flex items-center justify-between gap-3 p-3">
+                  <div className="flex items-center gap-3">
+                    <span className={`flex h-8 w-8 items-center justify-center rounded-lg text-sm ${item.type === 'income' ? 'bg-green-100' : 'bg-pink-100'}`}>
+                      {item.type === 'income' ? '↑' : '↓'}
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-brand-950">{item.title}</p>
+                      <p className="text-xs text-brand-600/60">{item.category} · {new Date(item.date).toLocaleDateString('en-IN')}</p>
+                    </div>
                   </div>
-                  <p className={`text-sm font-semibold ${item.amount < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{item.amount < 0 ? '-' : '+'}{formatCurrency(Math.abs(item.amount))}</p>
+                  <p className={`text-sm font-bold ${item.amount < 0 ? 'amount-expense' : 'amount-income'}`}>
+                    {item.amount < 0 ? '−' : '+'}{formatCurrency(Math.abs(item.amount))}
+                  </p>
                 </div>
               ))
             )}
           </div>
         </div>
 
-        <div className="glass-card rounded-[2rem] p-6">
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-white">Upcoming Loan Payments</h2>
-              <p className="mt-2 text-sm text-slate-400">Stay ahead of your EMI schedule.</p>
-            </div>
-            <div className="status-pill">{upcomingLoans.length} due</div>
+        <div className="floating-panel p-5">
+          <div className="flex items-center justify-between">
+            <h3 className="section-title">Upcoming Loan Payments</h3>
+            <span className="status-pill">{upcomingLoans.length} due</span>
           </div>
-          <div className="space-y-3">
+          <div className="mt-4 space-y-2">
             {upcomingLoans.length ? upcomingLoans.map((loan) => (
-              <div key={loan._id} className="soft-card rounded-3xl p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="font-semibold text-white">{loan.loanName}</p>
-                    <p className="mt-1 text-sm text-slate-400">Due {new Date(loan.dueDate).toLocaleDateString()}</p>
-                  </div>
-                  <p className="text-lg font-semibold text-emerald-300">{formatCurrency(loan.monthlyInstallment || 0)}</p>
+              <div key={loan._id} className="list-row flex items-center justify-between gap-3 p-3">
+                <div>
+                  <p className="text-sm font-semibold text-brand-950">{loan.loanName}</p>
+                  <p className="text-xs text-brand-600/60">Due {new Date(loan.dueDate).toLocaleDateString('en-IN')}</p>
                 </div>
+                <p className="amount-loan text-sm">{formatCurrency(loan.monthlyInstallment || 0)}</p>
               </div>
             )) : (
-              <p className="text-slate-400">No loan payments are scheduled for later this month.</p>
+              <div className="empty-state">
+                <span className="text-2xl">🏦</span>
+                <p className="mt-2">No upcoming loan payments</p>
+              </div>
             )}
           </div>
         </div>
       </section>
 
-      <section className="glass-card rounded-[2rem] p-8">
-        <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+      {/* Monthly summary */}
+      <section className="floating-panel p-5">
+        <div className="grid gap-5 xl:grid-cols-[1.3fr_0.7fr]">
           <div>
-            <h2 className="text-xl font-semibold text-white">Monthly Summary</h2>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <h3 className="section-title">Monthly Summary</h3>
+            <p className="mt-0.5 text-xs text-brand-600/60">{selectedPeriodLabel}</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {[
-                { label: 'Income', value: formatCurrency(totalIncome), color: 'text-emerald-300' },
-                { label: 'Expenses', value: formatCurrency(totalExpenses), color: 'text-rose-300' },
-                { label: 'Loans', value: formatCurrency(monthlyLoanObligations), color: 'text-sky-300' },
-                { label: 'Remaining', value: formatCurrency(availableAfterLoans), color: availableAfterLoans >= 0 ? 'text-emerald-300' : 'text-rose-300' },
+                { label: 'Income', value: formatCurrency(totalIncome), cls: 'amount-income' },
+                { label: 'Expenses', value: formatCurrency(totalExpenses), cls: 'amount-expense' },
+                { label: 'Loans', value: formatCurrency(monthlyLoanObligations), cls: 'amount-loan' },
+                { label: 'Remaining', value: formatCurrency(availableAfterLoans), cls: availableAfterLoans >= 0 ? 'amount-income' : 'amount-expense' },
               ].map((item) => (
-                <div key={item.label} className="soft-card rounded-[1.75rem] p-5">
-                  <p className="text-sm uppercase tracking-[0.2em] text-slate-400">{item.label}</p>
-                  <p className={`mt-4 text-2xl font-semibold ${item.color}`}>{item.value}</p>
+                <div key={item.label} className="summary-mini">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-brand-500">{item.label}</p>
+                  <p className={`mt-2 text-xl font-extrabold ${item.cls}`}>{item.value}</p>
                 </div>
               ))}
             </div>
           </div>
-          <div className="soft-card rounded-[2rem] p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-400">Financial Health</p>
-                <h3 className="mt-3 text-2xl font-semibold text-white">{availableAfterLoans >= 0 ? 'Good job! You’re managing well.' : 'Watch your spending this month.'}</h3>
-              </div>
-              <div className="text-right text-sm text-slate-400">{Math.round(healthIndicator)}%</div>
+          <div className="summary-mini flex flex-col justify-between">
+            <div>
+              <p className="text-xs font-semibold text-brand-600">Financial Health</p>
+              <p className="mt-2 text-sm font-bold leading-snug text-brand-950">
+                {availableAfterLoans >= 0
+                  ? `You're ahead for ${selectedPeriodLabel}!`
+                  : `Watch spending for ${selectedPeriodLabel}.`}
+              </p>
             </div>
-            <div className="mt-8 h-5 overflow-hidden rounded-full bg-slate-800">
-              <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-sky-400 to-violet-500" style={{ width: `${Math.min(100, Math.max(0, healthIndicator))}%` }} />
+            <div className="mt-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-brand-600/60">Score</span>
+                <span className="rounded-lg bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">{Math.round(healthIndicator)}%</span>
+              </div>
+              <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-brand-100">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-brand-600 to-emerald-400 transition-all duration-500"
+                  style={{ width: `${Math.min(100, Math.max(0, healthIndicator))}%` }}
+                />
+              </div>
             </div>
           </div>
         </div>

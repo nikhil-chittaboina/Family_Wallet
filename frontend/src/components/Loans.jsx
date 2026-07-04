@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import axios from 'axios';
-
-function formatCurrency(value) {
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value);
-}
+import api from '../lib/api';
+import { formatCurrency } from '../lib/format';
 
 function Loans() {
   const [loans, setLoans] = useState([]);
@@ -32,7 +29,7 @@ function Loans() {
 
   const fetchLoans = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/loans');
+      const response = await api.get('/loans');
       setLoans(response.data);
       setStatus(response.data.length ? '' : 'No loans configured yet.');
     } catch (error) {
@@ -42,7 +39,7 @@ function Loans() {
 
   const onSubmit = async (data) => {
     try {
-      await axios.post('http://localhost:5000/api/loans', {
+      await api.post('/loans', {
         ...data,
         principalAmount: Number(data.principalAmount),
         interestRate: Number(data.interestRate || 0),
@@ -75,115 +72,112 @@ function Loans() {
   const overdueLoans = useMemo(() => loans.filter((loan) => new Date(loan.dueDate) < new Date()).length, [loans]);
 
   return (
-    <div className="space-y-8">
-      <section className="glass-card rounded-[2rem] p-8">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="space-y-5 pb-20 lg:pb-0">
+      <section className="hero-banner p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-sky-300/80">Loan Management</p>
-            <h1 className="mt-4 text-4xl font-semibold text-white">Configure recurring payments</h1>
-            <p className="mt-3 max-w-2xl text-slate-300">Track EMI, due dates, remaining installments, and payment status across all family loans.</p>
+            <p className="section-label">Loans</p>
+            <h2 className="page-title mt-1">Recurring payments</h2>
+            <p className="page-subtitle mt-1">Track EMI, due dates and loan status.</p>
           </div>
-          <div className="rounded-[2rem] bg-gradient-to-br from-sky-500/15 to-cyan-500/10 p-6 text-white shadow-soft">
-            <p className="text-sm text-slate-300">Total EMI</p>
-            <p className="mt-3 text-3xl font-semibold">{formatCurrency(monthlyEmi)}</p>
-            <p className="mt-2 text-sm text-slate-400">{overdueLoans} overdue</p>
+          <div className="stat-card stat-card-savings shrink-0 !p-4">
+            <p className="text-xs font-semibold text-blue-600">Total EMI</p>
+            <p className="mt-1 text-2xl font-extrabold text-brand-950">{formatCurrency(monthlyEmi)}</p>
+            {overdueLoans > 0 && <p className="mt-1 text-xs font-semibold text-rose-600">{overdueLoans} overdue</p>}
           </div>
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="glass-card rounded-[2rem] p-8">
-          <p className="text-sm uppercase tracking-[0.3em] text-slate-400">Add a loan</p>
-          <form onSubmit={handleSubmit(onSubmit)} className="mt-8 grid gap-4">
+      <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="glass-card p-5">
+          <p className="section-label">Add a loan</p>
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-5 grid gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="space-y-2 text-sm text-slate-300">
+              <label className="space-y-1.5 text-sm font-medium text-brand-800">
                 Loan name
-                <input {...register('loanName', { required: true })} className="input-style" placeholder="Home loan, Personal loan" />
-                {errors.loanName && <span className="text-rose-300">Loan name is required</span>}
+                <input {...register('loanName', { required: true })} className="input-soft" placeholder="Home loan, Personal loan" />
+                {errors.loanName && <span className="text-rose-600 text-xs">Loan name is required</span>}
               </label>
-              <label className="space-y-2 text-sm text-slate-300">
+              <label className="space-y-1.5 text-sm font-medium text-brand-800">
                 Lender
-                <input {...register('lenderName')} className="input-style" placeholder="Bank or lender name" />
+                <input {...register('lenderName')} className="input-soft" placeholder="Bank or lender name" />
               </label>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="space-y-2 text-sm text-slate-300">
+              <label className="space-y-1.5 text-sm font-medium text-brand-800">
                 Principal amount
-                <input type="number" step="0.01" {...register('principalAmount', { required: true, min: 0 })} className="input-style" />
-                {errors.principalAmount && <span className="text-rose-300">Amount is required</span>}
+                <input type="number" step="0.01" {...register('principalAmount', { required: true, min: 0 })} className="input-soft" />
+                {errors.principalAmount && <span className="text-rose-600 text-xs">Amount is required</span>}
               </label>
-              <label className="space-y-2 text-sm text-slate-300">
+              <label className="space-y-1.5 text-sm font-medium text-brand-800">
                 Monthly installment
-                <input type="number" step="0.01" {...register('monthlyInstallment', { required: true, min: 0 })} className="input-style" />
-                {errors.monthlyInstallment && <span className="text-rose-300">Installment is required</span>}
+                <input type="number" step="0.01" {...register('monthlyInstallment', { required: true, min: 0 })} className="input-soft" />
+                {errors.monthlyInstallment && <span className="text-rose-600 text-xs">Installment is required</span>}
               </label>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="space-y-2 text-sm text-slate-300">
+              <label className="space-y-1.5 text-sm font-medium text-brand-800">
                 Interest rate
-                <input type="number" step="0.01" {...register('interestRate')} className="input-style" placeholder="Optional" />
+                <input type="number" step="0.01" {...register('interestRate')} className="input-soft" placeholder="Optional" />
               </label>
-              <label className="space-y-2 text-sm text-slate-300">
+              <label className="space-y-1.5 text-sm font-medium text-brand-800">
                 Due date
-                <input type="date" {...register('dueDate', { required: true })} className="input-style" />
-                {errors.dueDate && <span className="text-rose-300">Due date is required</span>}
+                <input type="date" {...register('dueDate', { required: true })} className="input-soft" />
+                {errors.dueDate && <span className="text-rose-600 text-xs">Due date is required</span>}
               </label>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="space-y-2 text-sm text-slate-300">
+              <label className="space-y-1.5 text-sm font-medium text-brand-800">
                 Start date
-                <input type="date" {...register('startDate', { required: true })} className="input-style" />
-                {errors.startDate && <span className="text-rose-300">Start date is required</span>}
+                <input type="date" {...register('startDate', { required: true })} className="input-soft" />
+                {errors.startDate && <span className="text-rose-600 text-xs">Start date is required</span>}
               </label>
-              <label className="space-y-2 text-sm text-slate-300">
+              <label className="space-y-1.5 text-sm font-medium text-brand-800">
                 End date
-                <input type="date" {...register('endDate')} className="input-style" />
+                <input type="date" {...register('endDate')} className="input-soft" />
               </label>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="space-y-2 text-sm text-slate-300">
+              <label className="space-y-1.5 text-sm font-medium text-brand-800">
                 Remaining installments
-                <input type="number" {...register('remainingInstallments')} className="input-style" placeholder="Optional" />
+                <input type="number" {...register('remainingInstallments')} className="input-soft" placeholder="Optional" />
               </label>
-              <label className="space-y-2 text-sm text-slate-300">
+              <label className="space-y-1.5 text-sm font-medium text-brand-800">
                 Total paid
-                <input type="number" step="0.01" {...register('totalPaid')} className="input-style" placeholder="Optional" />
+                <input type="number" step="0.01" {...register('totalPaid')} className="input-soft" placeholder="Optional" />
               </label>
             </div>
 
-            <label className="space-y-2 text-sm text-slate-300">
+            <label className="space-y-1.5 text-sm font-medium text-brand-800">
               Notes
-              <textarea rows={4} {...register('notes')} className="input-style resize-none" placeholder="Optional loan remarks" />
+              <textarea rows={4} {...register('notes')} className="input-soft resize-none" placeholder="Optional loan remarks" />
             </label>
 
             <button type="submit" disabled={isSubmitting} className="button-primary w-full">Create Loan</button>
           </form>
         </div>
 
-        <div className="glass-card rounded-[2rem] p-8">
+        <div className="glass-card p-5">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-slate-400">Active loans</p>
-              <h2 className="mt-3 text-2xl font-semibold text-white">Loan overview</h2>
-            </div>
-            <div className="status-pill">{loans.length} loans</div>
+            <h3 className="section-title">Active loans</h3>
+            <span className="status-pill">{loans.length} loans</span>
           </div>
-          <div className="mt-6 space-y-3">
-            {status && <p className="text-slate-400">{status}</p>}
+          <div className="mt-4 space-y-2">
+            {status && <p className="text-sm text-brand-600/60">{status}</p>}
             {loans.map((loan) => (
-              <div key={loan._id} className="soft-card rounded-3xl p-4">
+              <div key={loan._id} className="list-row p-3">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="font-semibold text-white">{loan.loanName}</p>
-                    <p className="mt-1 text-sm text-slate-400">{loan.lenderName || 'Unknown lender'} • Due {new Date(loan.dueDate).toLocaleDateString()}</p>
+                    <p className="text-sm font-semibold text-brand-950">{loan.loanName}</p>
+                    <p className="text-xs text-brand-600/60">{loan.lenderName || 'Unknown lender'} · Due {new Date(loan.dueDate).toLocaleDateString('en-IN')}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-semibold text-emerald-300">{formatCurrency(loan.monthlyInstallment || 0)}</p>
-                    <p className="text-sm text-slate-400">{loan.status}</p>
+                    <p className="amount-loan text-sm">{formatCurrency(loan.monthlyInstallment || 0)}</p>
+                    <p className="text-xs text-brand-500">{loan.status}</p>
                   </div>
                 </div>
               </div>
